@@ -576,6 +576,72 @@
   .love-letter .signature { opacity: 0; transition: opacity 0.7s ease; }
   .love-letter #brief-text { min-height: 3.3em; }
 
+  /* ---------- PUK-STURM ---------- */
+  .storm-banner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .storm-banner .hand {
+    font-size: clamp(40px, 11vw, 68px);
+    font-weight: 700;
+    color: var(--wax);
+    text-shadow: 0 3px 0 #FFF8F1, 0 8px 20px rgba(194, 51, 63, 0.35);
+    transform: rotate(-3deg);
+    text-align: center;
+  }
+  .storm-banner.show { animation: stormIn 1.6s ease both; }
+  @keyframes stormIn {
+    0%   { opacity: 0; transform: scale(0.4) rotate(-8deg); }
+    15%  { opacity: 1; transform: scale(1.15) rotate(3deg); }
+    30%  { transform: scale(1) rotate(-2deg); }
+    80%  { opacity: 1; transform: scale(1.02); }
+    100% { opacity: 0; transform: scale(1.15); }
+  }
+
+  /* ---------- Kuss-Attacke ---------- */
+  .btn-tease {
+    margin-top: 36px;
+    background: transparent;
+    color: var(--ink-soft);
+    border: 2px dashed rgba(138, 98, 98, 0.5);
+    font-size: 22px;
+    padding: 10px 26px;
+  }
+  .btn-tease:hover {
+    color: var(--wax);
+    border-color: var(--wax);
+    transform: rotate(-2deg) scale(1.05);
+  }
+  .kiss {
+    position: fixed;
+    top: -50px;
+    z-index: 6;
+    pointer-events: none;
+    animation: kissFall linear forwards;
+  }
+  @keyframes kissFall {
+    to { transform: translateY(118vh) rotate(50deg); }
+  }
+  .fly-puk {
+    position: fixed;
+    left: -150px;
+    width: 96px;
+    height: 96px;
+    z-index: 7;
+    pointer-events: none;
+    filter: drop-shadow(0 6px 14px rgba(74, 43, 43, 0.3));
+    animation: flyPuk 1.7s cubic-bezier(0.3, 0, 0.7, 1) forwards;
+  }
+  @keyframes flyPuk {
+    to { transform: translateX(calc(100vw + 300px)) rotate(900deg); }
+  }
+
   /* ---------- Reduced motion ---------- */
   @media (prefers-reduced-motion: reduce) {
     .seal, .intro-hint, .float-heart { animation: none !important; }
@@ -584,7 +650,8 @@
     .love-letter .signature { transition: none; }
     .crown-moment.show .crown { animation: none; }
     .scene { transition: opacity 0.3s ease; transform: none; }
-    .confetti, .burst-heart { display: none; }
+    .confetti, .burst-heart, .kiss, .fly-puk { display: none; }
+    .storm-banner.show { animation: none; opacity: 1; }
   }
 </style>
 </head>
@@ -661,6 +728,9 @@ const PUK_STICKER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAA
       <p style="margin-top:22px;"><button class="btn btn-primary" id="btn-start-game">Los geht's</button></p>
     </div>
   </div>
+  <div class="storm-banner" id="storm-banner" aria-hidden="true">
+    <div class="hand">🌩️ PUK-STURM! 🌩️</div>
+  </div>
   <div class="game-msg" id="game-win-msg">
     <div class="inner">
       <div class="hand">Alle gefangen! 🎉</div>
@@ -703,6 +773,7 @@ const PUK_STICKER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAA
   <div class="photo-strip" id="photo-strip">
     <div class="photo-strip-title hand">ein paar Lieblingsmomente ❤</div>
   </div>
+  <button class="btn btn-tease" id="btn-kiss">Drück mich nicht 🙃</button>
 </section>
 
 <!-- Herzschlag-Overlay beim Ja -->
@@ -787,6 +858,9 @@ const PUK_STICKER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAA
   var gameTime = 0;
   var lastPuk = -10;
   var floats = [];
+  var stormActive = false;
+  var stormTriggered = false;
+  var stormUntil = 0;
   var pukImg = new Image();
   var pukReady = false;
   pukImg.onload = function () { pukReady = true; };
@@ -824,8 +898,23 @@ const PUK_STICKER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAA
   }
 
   function spawnHeart() {
+    // PUK-STURM: es regnet ausschliesslich Puks in allen Grössen
+    if (stormActive && pukReady) {
+      hearts.push({
+        type: 'puk',
+        x: 40 + Math.random() * (W - 80),
+        y: -50,
+        size: 38 + Math.random() * 24,
+        speed: 170 + Math.random() * 130,
+        drift: (Math.random() - 0.5) * 50,
+        wob: Math.random() * Math.PI * 2,
+        rot: 0,
+        rotSpeed: (Math.random() < 0.5 ? -1 : 1) * (2 + Math.random() * 3.5)
+      });
+      return;
+    }
     // Ab und zu fällt Puk höchstpersönlich vom Himmel (3 Herzen wert)
-    if (pukReady && caught >= 3 && gameTime - lastPuk > 5 && Math.random() < 0.25) {
+    if (pukReady && caught >= 2 && gameTime - lastPuk > 3 && Math.random() < 0.4) {
       lastPuk = gameTime;
       hearts.push({
         type: 'puk',
@@ -939,10 +1028,12 @@ const PUK_STICKER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAA
     wobble += dt * 4;
     gameTime += dt;
 
+    if (stormActive && gameTime > stormUntil) stormActive = false;
+
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
       spawnHeart();
-      spawnTimer = Math.max(0.45, 0.95 - caught * 0.025);
+      spawnTimer = stormActive ? 0.16 : Math.max(0.45, 0.95 - caught * 0.025);
     }
 
     ctx.clearRect(0, 0, W, H);
@@ -981,6 +1072,15 @@ const PUK_STICKER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAA
         spawnParticles(h.x, h.y, h.type === 'puk' || h.golden);
         hearts.splice(i, 1);
         updateHud();
+        // Kurz vor dem Sieg bricht der PUK-STURM los
+        if (!stormTriggered && caught >= CONFIG.zielHerzen - 4 && caught < CONFIG.zielHerzen) {
+          stormTriggered = true;
+          stormActive = true;
+          stormUntil = gameTime + 4;
+          el('storm-banner').classList.add('show');
+          if (navigator.vibrate) navigator.vibrate([50, 80, 50, 80, 50]);
+          setTimeout(function () { el('storm-banner').classList.remove('show'); }, 1700);
+        }
         if (caught >= CONFIG.zielHerzen) { winGame(); return; }
         continue;
       }
@@ -1039,6 +1139,9 @@ const PUK_STICKER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAA
     hearts = [];
     particles = [];
     floats = [];
+    stormActive = false;
+    stormTriggered = false;
+    stormUntil = 0;
     gameTime = 0;
     lastPuk = -10;
     lastTime = 0;
@@ -1269,6 +1372,41 @@ const PUK_STICKER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAA
         box.appendChild(p);
       }
     }, 24);
+  }
+
+  /* ---------- Kuss-Attacke (der Button, den man nicht drücken soll) ---------- */
+  var kissTexts = ['Hey! Ich sagte: nicht drücken!', 'Du machst es schon wieder…', 'Na gut. Du hast gewonnen 😘', '∞ Küsse verfügbar'];
+  var kissCount = 0;
+  el('btn-kiss').addEventListener('click', function () {
+    kissAttack();
+    this.textContent = kissTexts[Math.min(kissCount, kissTexts.length - 1)];
+    kissCount++;
+  });
+
+  function kissAttack() {
+    if (navigator.vibrate) navigator.vibrate([40, 70, 40]);
+    if (reducedMotion) return;
+    for (var i = 0; i < 34; i++) {
+      (function () {
+        var k = document.createElement('div');
+        k.className = 'kiss';
+        k.textContent = '💋';
+        k.style.left = Math.random() * 100 + 'vw';
+        k.style.fontSize = (16 + Math.random() * 26) + 'px';
+        k.style.animationDuration = (1.6 + Math.random() * 1.6) + 's';
+        k.style.animationDelay = (Math.random() * 0.5) + 's';
+        document.body.appendChild(k);
+        setTimeout(function () { k.remove(); }, 4200);
+      })();
+    }
+    // Puks Kopf fliegt rotierend quer über den Bildschirm
+    var fp = document.createElement('img');
+    fp.className = 'fly-puk';
+    fp.src = PUK_STICKER;
+    fp.alt = '';
+    fp.style.top = (12 + Math.random() * 55) + 'vh';
+    document.body.appendChild(fp);
+    setTimeout(function () { fp.remove(); }, 1900);
   }
 
   /* ---------- Szene 4: Herz-Konfetti ---------- */
